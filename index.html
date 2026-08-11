@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Скинулись</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --paper: #EEF2EA;
+    --paper-raise: #FFFFFF;
+    --ink: #17261D;
+    --ink-soft: #5B6B5E;
+    --line: #C9D3C4;
+    --coral: #E2542F;
+    --plum: #6E5A9C;
+    --teal: #237A5F;
+    --teal-soft: #DCEDE5;
+    --coral-soft: #FBE4DC;
+    --plum-soft: #E9E4F3;
+    --radius: 18px;
+    --tg-bg: var(--paper);
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Manrope', sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  #app{
+    width:100%;
+    max-width:430px;
+    min-height:100vh;
+    background: var(--paper);
+    position:relative;
+    padding-bottom: 100px;
+  }
+  .mono{ font-family:'Space Mono', monospace; }
+
+  /* ---- App bar ---- */
+  .appbar{
+    padding:22px 20px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .brand{
+    display:flex; align-items:center; gap:10px;
+  }
+  .brand-mark{
+    width:34px;height:34px;border-radius:9px;
+    background:var(--ink);
+    color:var(--paper);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Space Mono',monospace; font-weight:700; font-size:15px;
+    transform: rotate(-4deg);
+  }
+  .brand-title{ font-weight:800; font-size:19px; letter-spacing:-0.3px; }
+  .brand-sub{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.08em; }
+  .icon-btn{
+    width:38px;height:38px;border-radius:12px;
+    border:1.5px solid var(--line);
+    background:var(--paper-raise);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+
+  /* ---- Screens ---- */
+  .screen{ display:none; padding:0 16px; animation: fadein .25s ease; }
+  .screen.active{ display:block; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
+
+  /* ---- Groups list ---- */
+  .eyebrow{
+    font-size:11px; letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--ink-soft); font-weight:700; margin:18px 4px 10px;
+  }
+  .group-card{
+    background:var(--paper-raise);
+    border-radius: var(--radius);
+    padding:16px 18px;
+    margin-bottom:12px;
+    cursor:pointer;
+    border:1.5px solid transparent;
+    transition: border-color .15s, transform .1s;
+  }
+  .group-card:active{ transform: scale(0.98); }
+  .group-card:hover{ border-color: var(--line); }
+  .group-card-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .group-name{ font-weight:800; font-size:16.5px; }
+  .group-meta{ font-size:12.5px; color:var(--ink-soft); margin-top:3px; }
+  .group-total{ font-family:'Space Mono',monospace; font-weight:700; font-size:15px; }
+  .avatars{ display:flex; margin-top:12px; }
+  .avatar{
+    width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:10.5px; font-weight:700; color:#fff;
+    border:2px solid var(--paper-raise);
+    margin-left:-8px;
+  }
+  .avatar:first-child{ margin-left:0; }
+
+  .empty{
+    text-align:center; padding:60px 20px; color:var(--ink-soft);
+  }
+  .empty-mark{ font-size:34px; margin-bottom:10px; }
+  .empty-title{ font-weight:700; color:var(--ink); margin-bottom:4px; }
+
+  /* ---- Group screen ---- */
+  .back-row{ display:flex; align-items:center; gap:10px; padding:18px 4px 6px; }
+  .back-btn{ cursor:pointer; font-size:20px; color:var(--ink-soft); }
+  .group-header{ padding: 6px 4px 4px; }
+  .group-header .group-name{ font-size:21px; }
+  .members-row{ display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .chip{
+    display:flex; align-items:center; gap:6px;
+    background:var(--paper-raise); border-radius:20px;
+    padding:5px 10px 5px 5px; font-size:12.5px; font-weight:600;
+  }
+  .chip .avatar{ margin-left:0; width:20px; height:20px; font-size:9px; border:none; }
+
+  .tabs{ display:flex; gap:6px; margin:18px 0 14px; background:var(--paper-raise); padding:4px; border-radius:14px; }
+  .tab{
+    flex:1; text-align:center; padding:9px 0; border-radius:11px;
+    font-size:13.5px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+  }
+  .tab.active{ background:var(--ink); color:var(--paper); }
+
+  /* ---- Receipt ---- */
+  .receipt{
+    background: var(--paper-raise);
+    border-radius: 4px 4px 14px 14px;
+    position:relative;
+    padding: 20px 18px 14px;
+    box-shadow: 0 1px 0 var(--line);
+  }
+  .receipt::before{
+    content:"";
+    display:block;
+    position:absolute; top:-7px; left:0; right:0; height:14px;
+    background-image: radial-gradient(circle at 10px 7px, var(--paper) 6px, transparent 6.5px);
+    background-size: 20px 14px;
+    background-repeat: repeat-x;
+  }
+  .receipt-title{
+    font-family:'Space Mono',monospace; font-weight:700; font-size:12px;
+    letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-soft);
+    text-align:center; padding-bottom:12px; border-bottom:1px dashed var(--line); margin-bottom:4px;
+  }
+  .expense-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:11px 0; border-bottom:1px dashed var(--line);
+    gap:10px;
+  }
+  .expense-row:last-of-type{ border-bottom:none; }
+  .expense-left{ min-width:0; }
+  .expense-desc{ font-weight:700; font-size:14px; }
+  .expense-who{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .expense-amount{ font-family:'Space Mono',monospace; font-weight:700; font-size:14.5px; white-space:nowrap; }
+  .receipt-total{
+    display:flex; justify-content:space-between; margin-top:10px; padding-top:12px;
+    border-top:2px solid var(--ink); font-family:'Space Mono',monospace; font-weight:700; font-size:15px;
+  }
+
+  /* ---- Balances ---- */
+  .balance-row{
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--paper-raise); border-radius:14px; padding:13px 16px; margin-bottom:9px;
+  }
+  .balance-name{ font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:9px; }
+  .balance-amount{ font-family:'Space Mono',monospace; font-weight:700; font-size:14.5px; }
+  .pos{ color:var(--teal); } .neg{ color:var(--coral); } .zero{ color:var(--ink-soft); }
+
+  .settle-card{
+    background: var(--plum-soft);
+    border-radius:14px; padding:13px 16px; margin-bottom:9px;
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:13.5px;
+  }
+  .settle-arrow{ color:var(--plum); font-weight:700; }
+  .settle-amount{ font-family:'Space Mono',monospace; font-weight:700; }
+
+  /* ---- FAB ---- */
+  .fab{
+    position:fixed; bottom:26px; left:50%;
+    transform: translateX(calc(-50% + 0px));
+    margin-left: 0;
+    width:56px; height:56px; border-radius:50%;
+    background:var(--ink); color:var(--paper);
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px; box-shadow:0 6px 16px rgba(23,38,29,0.35);
+    cursor:pointer; z-index:20;
+  }
+  .fab-wrap{ position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:center; pointer-events:none; }
+  .fab-wrap .fab{ pointer-events:auto; position:relative; bottom:26px; left:auto; transform:none; }
+
+  /* ---- Sheet / modal ---- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(23,38,29,0.4);
+    display:none; align-items:flex-end; justify-content:center; z-index:50;
+  }
+  .overlay.active{ display:flex; }
+  .sheet{
+    width:100%; max-width:430px; background:var(--paper);
+    border-radius:22px 22px 0 0; padding:20px 20px 26px;
+    animation: slideup .22s ease;
+    max-height:88vh; overflow-y:auto;
+  }
+  @keyframes slideup{ from{ transform:translateY(30px); opacity:0 } to{ transform:translateY(0); opacity:1 } }
+  .sheet-handle{ width:38px; height:4px; background:var(--line); border-radius:2px; margin:0 auto 16px; }
+  .sheet-title{ font-weight:800; font-size:18px; margin-bottom:16px; }
+  label{ font-size:12px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.06em; display:block; margin:14px 0 6px; }
+  input[type=text], input[type=number]{
+    width:100%; border:1.5px solid var(--line); background:var(--paper-raise);
+    border-radius:12px; padding:12px 14px; font-size:15px; font-family:'Manrope',sans-serif; color:var(--ink);
+  }
+  input:focus{ outline:none; border-color:var(--ink); }
+  .member-pick{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .pick-chip{
+    padding:8px 13px; border-radius:20px; border:1.5px solid var(--line);
+    font-size:13px; font-weight:700; cursor:pointer; background:var(--paper-raise);
+  }
+  .pick-chip.selected{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .btn-primary{
+    width:100%; margin-top:20px; background:var(--ink); color:var(--paper);
+    border:none; border-radius:14px; padding:15px; font-size:15px; font-weight:800;
+    cursor:pointer; font-family:'Manrope',sans-serif;
+  }
+  .btn-secondary{
+    width:100%; margin-top:10px; background:transparent; color:var(--ink-soft);
+    border:1.5px solid var(--line); border-radius:14px; padding:13px; font-size:14px; font-weight:700;
+    cursor:pointer; font-family:'Manrope',sans-serif;
+  }
+  .row-inline{ display:flex; gap:10px; }
+  .row-inline > div{ flex:1; }
+  .helper{ font-size:11.5px; color:var(--ink-soft); margin-top:6px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="appbar">
+    <div class="brand">
+      <div class="brand-mark">₽=</div>
+      <div>
+        <div class="brand-title">Скинулись</div>
+        <div class="brand-sub">делим счета без нервов</div>
+      </div>
+    </div>
+    <div class="icon-btn" id="newGroupBtn">+</div>
+  </div>
+
+  <!-- SCREEN: groups -->
+  <div class="screen active" id="screen-groups">
+    <div class="eyebrow">Твои группы</div>
+    <div id="groupsList"></div>
+  </div>
+
+  <!-- SCREEN: group -->
+  <div class="screen" id="screen-group">
+    <div class="back-row">
+      <div class="back-btn" id="backBtn">←</div>
+    </div>
+    <div class="group-header">
+      <div class="group-name" id="gTitle"></div>
+      <div class="members-row" id="gMembers"></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="expenses">Расходы</div>
+      <div class="tab" data-tab="balances">Балансы</div>
+    </div>
+
+    <div id="tab-expenses">
+      <div class="receipt">
+        <div class="receipt-title" id="gCurrencyLabel">чек группы</div>
+        <div id="expensesList"></div>
+        <div class="receipt-total"><span>Итого</span><span id="gTotal" class="mono">0</span></div>
+      </div>
+    </div>
+
+    <div id="tab-balances" style="display:none">
+      <div class="eyebrow">Кто в плюсе / минусе</div>
+      <div id="balancesList"></div>
+      <div class="eyebrow">Кому перевести, чтобы закрыть долги</div>
+      <div id="settleList"></div>
+    </div>
+  </div>
+
+  <div class="fab-wrap"><div class="fab" id="fabAdd">+</div></div>
+</div>
+
+<!-- Modal: new group -->
+<div class="overlay" id="overlayNewGroup">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Новая группа</div>
+    <label>Название</label>
+    <input type="text" id="ngName" placeholder="Поездка в Гродно" />
+    <label>Участники (через запятую)</label>
+    <input type="text" id="ngMembers" placeholder="Аня, Дима, Саша, Ты" />
+    <label>Валюта</label>
+    <input type="text" id="ngCurrency" placeholder="BYN" value="BYN" />
+    <button class="btn-primary" id="ngCreate">Создать группу</button>
+    <button class="btn-secondary" id="ngCancel">Отмена</button>
+  </div>
+</div>
+
+<!-- Modal: add expense -->
+<div class="overlay" id="overlayExpense">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Новый расход</div>
+    <label>На что потратили</label>
+    <input type="text" id="exDesc" placeholder="Ужин в кафе" />
+    <div class="row-inline">
+      <div>
+        <label>Сумма</label>
+        <input type="number" id="exAmount" placeholder="0" />
+      </div>
+      <div>
+        <label>Кто платил</label>
+        <select id="exPayer" style="width:100%; border:1.5px solid var(--line); background:var(--paper-raise); border-radius:12px; padding:12px 14px; font-size:15px;"></select>
+      </div>
+    </div>
+    <label>Делим между</label>
+    <div class="member-pick" id="exSplitPick"></div>
+    <div class="helper">Сумма разделится поровну между выбранными</div>
+    <button class="btn-primary" id="exSave">Добавить в чек</button>
+    <button class="btn-secondary" id="exCancel">Отмена</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ---------- Telegram integration ----------
+  let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  if(tg){
+    try{
+      tg.ready(); tg.expand();
+      const tp = tg.themeParams || {};
+      const root = document.documentElement.style;
+      if(tp.bg_color) root.setProperty('--paper', tp.bg_color);
+      if(tp.secondary_bg_color) root.setProperty('--paper-raise', tp.secondary_bg_color);
+      if(tp.text_color) root.setProperty('--ink', tp.text_color);
+      if(tp.hint_color) root.setProperty('--ink-soft', tp.hint_color);
+    }catch(e){}
+  }
+  function haptic(type){ try{ tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred(type||'light'); }catch(e){} }
+
+  // ---------- storage ----------
+  const STORAGE_KEY = 'skinulis-state-v1';
+  let state = { groups: [] };
+  let currentGroupId = null;
+
+  async function loadState(){
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value){ state = JSON.parse(res.value); }
+    }catch(e){ /* no data yet */ }
+    render();
+  }
+  async function saveState(){
+    try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state), false); }
+    catch(e){ console.error('storage error', e); }
+  }
+
+  // ---------- helpers ----------
+  const COLORS = ['#E2542F','#6E5A9C','#237A5F','#C08B2F','#3F6FB0','#B0507A'];
+  function colorFor(name){
+    let h=0; for(let i=0;i<name.length;i++) h = name.charCodeAt(i) + ((h<<5)-h);
+    return COLORS[Math.abs(h)%COLORS.length];
+  }
+  function initials(name){ return (name.trim()[0]||'?').toUpperCase(); }
+  function fmt(n){ return (Math.round(n*100)/100).toFixed(2); }
+  function uid(){ return Math.random().toString(36).slice(2,10); }
+
+  function computeBalances(group){
+    const bal = {};
+    group.members.forEach(m => bal[m]=0);
+    group.expenses.forEach(ex=>{
+      const share = ex.amount / ex.splitAmong.length;
+      bal[ex.payer] = (bal[ex.payer]||0) + ex.amount;
+      ex.splitAmong.forEach(m => bal[m] = (bal[m]||0) - share);
+    });
+    return bal;
+  }
+  function simplifyDebts(bal){
+    const creditors = [], debtors = [];
+    Object.entries(bal).forEach(([name,v])=>{
+      if(v > 0.005) creditors.push({name, amt:v});
+      else if(v < -0.005) debtors.push({name, amt:-v});
+    });
+    creditors.sort((a,b)=>b.amt-a.amt);
+    debtors.sort((a,b)=>b.amt-a.amt);
+    const tx = [];
+    let i=0, j=0;
+    while(i<debtors.length && j<creditors.length){
+      const pay = Math.min(debtors[i].amt, creditors[j].amt);
+      tx.push({from:debtors[i].name, to:creditors[j].name, amount:pay});
+      debtors[i].amt -= pay; creditors[j].amt -= pay;
+      if(debtors[i].amt < 0.01) i++;
+      if(creditors[j].amt < 0.01) j++;
+    }
+    return tx;
+  }
+
+  // ---------- render: groups list ----------
+  function renderGroupsList(){
+    const el = document.getElementById('groupsList');
+    if(state.groups.length===0){
+      el.innerHTML = `<div class="empty">
+        <div class="empty-mark">🧾</div>
+        <div class="empty-title">Пока пусто</div>
+        <div>Создай первую группу, чтобы начать делить расходы</div>
+      </div>`;
+      return;
+    }
+    el.innerHTML = state.groups.map(g=>{
+      const total = g.expenses.reduce((s,e)=>s+e.amount,0);
+      const avatars = g.members.slice(0,5).map(m=>`<div class="avatar" style="background:${colorFor(m)}">${initials(m)}</div>`).join('');
+      return `<div class="group-card" data-id="${g.id}">
+        <div class="group-card-top">
+          <div>
+            <div class="group-name">${escapeHtml(g.name)}</div>
+            <div class="group-meta">${g.members.length} участников · ${g.expenses.length} расходов</div>
+          </div>
+          <div class="group-total mono">${fmt(total)} ${escapeHtml(g.currency)}</div>
+        </div>
+        <div class="avatars">${avatars}</div>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('.group-card').forEach(card=>{
+      card.addEventListener('click', ()=> openGroup(card.dataset.id));
+    });
+  }
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // ---------- render: group screen ----------
+  function openGroup(id){
+    currentGroupId = id;
+    document.getElementById('screen-groups').classList.remove('active');
+    document.getElementById('screen-group').classList.add('active');
+    switchTab('expenses');
+    renderGroupScreen();
+  }
+  function closeGroup(){
+    document.getElementById('screen-group').classList.remove('active');
+    document.getElementById('screen-groups').classList.add('active');
+    currentGroupId = null;
+    renderGroupsList();
+  }
+  function getGroup(){ return state.groups.find(g=>g.id===currentGroupId); }
+
+  function renderGroupScreen(){
+    const g = getGroup();
+    if(!g) return closeGroup();
+    document.getElementById('gTitle').textContent = g.name;
+    document.getElementById('gCurrencyLabel').textContent = `чек · ${g.currency}`;
+    document.getElementById('gMembers').innerHTML = g.members.map(m=>
+      `<div class="chip"><div class="avatar" style="background:${colorFor(m)}">${initials(m)}</div>${escapeHtml(m)}</div>`
+    ).join('');
+
+    // expenses / receipt
+    const list = document.getElementById('expensesList');
+    if(g.expenses.length===0){
+      list.innerHTML = `<div style="padding:20px 0; text-align:center; color:var(--ink-soft); font-size:13.5px;">Расходов ещё нет — нажми «+» внизу</div>`;
+    } else {
+      list.innerHTML = g.expenses.slice().reverse().map(ex=>`
+        <div class="expense-row">
+          <div class="expense-left">
+            <div class="expense-desc">${escapeHtml(ex.desc)}</div>
+            <div class="expense-who">заплатил(а) ${escapeHtml(ex.payer)} · на ${ex.splitAmong.length}</div>
+          </div>
+          <div class="expense-amount mono">${fmt(ex.amount)}</div>
+        </div>`).join('');
+    }
+    const total = g.expenses.reduce((s,e)=>s+e.amount,0);
+    document.getElementById('gTotal').textContent = fmt(total) + ' ' + g.currency;
+
+    // balances
+    const bal = computeBalances(g);
+    const balEl = document.getElementById('balancesList');
+    balEl.innerHTML = g.members.map(m=>{
+      const v = bal[m]||0;
+      const cls = v>0.01?'pos':(v<-0.01?'neg':'zero');
+      const sign = v>0.01?'+':'';
+      return `<div class="balance-row">
+        <div class="balance-name"><div class="avatar" style="background:${colorFor(m)}">${initials(m)}</div>${escapeHtml(m)}</div>
+        <div class="balance-amount ${cls}">${sign}${fmt(v)} ${g.currency}</div>
+      </div>`;
+    }).join('');
+
+    const tx = simplifyDebts(bal);
+    const settleEl = document.getElementById('settleList');
+    settleEl.innerHTML = tx.length===0
+      ? `<div style="padding:14px 4px; color:var(--ink-soft); font-size:13.5px;">Все в расчёте — переводов не нужно 🎉</div>`
+      : tx.map(t=>`<div class="settle-card">
+          <span>${escapeHtml(t.from)} <span class="settle-arrow">→</span> ${escapeHtml(t.to)}</span>
+          <span class="settle-amount">${fmt(t.amount)} ${g.currency}</span>
+        </div>`).join('');
+  }
+
+  function switchTab(name){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+    document.getElementById('tab-expenses').style.display = name==='expenses' ? '' : 'none';
+    document.getElementById('tab-balances').style.display = name==='balances' ? '' : 'none';
+  }
+  document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click', ()=>{ haptic(); switchTab(t.dataset.tab); }));
+
+  // ---------- new group modal ----------
+  const overlayNewGroup = document.getElementById('overlayNewGroup');
+  document.getElementById('newGroupBtn').addEventListener('click', ()=>{
+    document.getElementById('ngName').value='';
+    document.getElementById('ngMembers').value='';
+    document.getElementById('ngCurrency').value='BYN';
+    overlayNewGroup.classList.add('active');
+  });
+  document.getElementById('ngCancel').addEventListener('click', ()=> overlayNewGroup.classList.remove('active'));
+  document.getElementById('ngCreate').addEventListener('click', async ()=>{
+    const name = document.getElementById('ngName').value.trim();
+    const membersRaw = document.getElementById('ngMembers').value;
+    const currency = document.getElementById('ngCurrency').value.trim() || 'BYN';
+    const members = membersRaw.split(',').map(s=>s.trim()).filter(Boolean);
+    if(!name || members.length<2){
+      alert('Укажи название группы и минимум двух участников');
+      return;
+    }
+    const g = { id: uid(), name, currency, members, expenses: [] };
+    state.groups.push(g);
+    await saveState();
+    overlayNewGroup.classList.remove('active');
+    haptic('medium');
+    renderGroupsList();
+    openGroup(g.id);
+  });
+
+  // ---------- add expense modal ----------
+  const overlayExpense = document.getElementById('overlayExpense');
+  document.getElementById('fabAdd').addEventListener('click', ()=>{
+    if(!currentGroupId){ alert('Сначала открой или создай группу'); return; }
+    const g = getGroup();
+    document.getElementById('exDesc').value='';
+    document.getElementById('exAmount').value='';
+    const payerSel = document.getElementById('exPayer');
+    payerSel.innerHTML = g.members.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+    const pick = document.getElementById('exSplitPick');
+    pick.innerHTML = g.members.map(m=>`<div class="pick-chip selected" data-m="${escapeHtml(m)}">${escapeHtml(m)}</div>`).join('');
+    pick.querySelectorAll('.pick-chip').forEach(chip=>{
+      chip.addEventListener('click', ()=> chip.classList.toggle('selected'));
+    });
+    overlayExpense.classList.add('active');
+  });
+  document.getElementById('exCancel').addEventListener('click', ()=> overlayExpense.classList.remove('active'));
+  document.getElementById('exSave').addEventListener('click', async ()=>{
+    const g = getGroup();
+    const desc = document.getElementById('exDesc').value.trim();
+    const amount = parseFloat(document.getElementById('exAmount').value);
+    const payer = document.getElementById('exPayer').value;
+    const splitAmong = Array.from(document.querySelectorAll('#exSplitPick .pick-chip.selected')).map(c=>c.dataset.m);
+    if(!desc || !amount || amount<=0 || splitAmong.length===0){
+      alert('Заполни описание, сумму и выбери хотя бы одного участника');
+      return;
+    }
+    g.expenses.push({ id: uid(), desc, amount, payer, splitAmong });
+    await saveState();
+    overlayExpense.classList.remove('active');
+    haptic('medium');
+    renderGroupScreen();
+    renderGroupsList();
+  });
+
+  document.getElementById('backBtn').addEventListener('click', closeGroup);
+
+  function render(){ renderGroupsList(); }
+  loadState();
+})();
+</script>
+</body>
+</html>
