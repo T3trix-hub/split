@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Скинулись</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
@@ -25,7 +25,7 @@
   }
 
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body{ margin:0; padding:0; }
+  html,body{ margin:0; padding:0; overscroll-behavior:none; }
   body{
     background: var(--paper);
     color: var(--ink);
@@ -33,6 +33,7 @@
     min-height:100vh;
     display:flex;
     justify-content:center;
+    touch-action: pan-y;
   }
   #app{
     width:100%;
@@ -217,11 +218,11 @@
   .sheet-handle{ width:38px; height:4px; background:var(--line); border-radius:2px; margin:0 auto 16px; }
   .sheet-title{ font-weight:800; font-size:18px; margin-bottom:16px; }
   label{ font-size:12px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.06em; display:block; margin:14px 0 6px; }
-  input[type=text], input[type=number]{
+  input[type=text], input[type=number], select{
     width:100%; border:1.5px solid var(--line); background:var(--paper-raise);
-    border-radius:12px; padding:12px 14px; font-size:15px; font-family:'Manrope',sans-serif; color:var(--ink);
+    border-radius:12px; padding:12px 14px; font-size:16px; font-family:'Manrope',sans-serif; color:var(--ink);
   }
-  input:focus{ outline:none; border-color:var(--ink); }
+  input:focus, select:focus{ outline:none; border-color:var(--ink); }
   .member-pick{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
   .pick-chip{
     padding:8px 13px; border-radius:20px; border:1.5px solid var(--line);
@@ -254,7 +255,10 @@
         <div class="brand-sub">делим счета без нервов</div>
       </div>
     </div>
-    <div class="icon-btn" id="newGroupBtn">+</div>
+    <div style="display:flex; gap:8px;">
+      <div class="icon-btn" id="newGroupBtn">+</div>
+      <div class="icon-btn" id="closeAppBtn" style="display:none;">✕</div>
+    </div>
   </div>
 
   <!-- SCREEN: groups -->
@@ -303,11 +307,11 @@
     <div class="sheet-handle"></div>
     <div class="sheet-title">Новая группа</div>
     <label>Название</label>
-    <input type="text" id="ngName" placeholder="Поездка в Гродно" />
+    <input type="text" id="ngName" placeholder="Поездка в Гродно" enterkeyhint="next" />
     <label>Участники (через запятую)</label>
-    <input type="text" id="ngMembers" placeholder="Аня, Дима, Саша, Ты" />
+    <input type="text" id="ngMembers" placeholder="Аня, Дима, Саша, Ты" enterkeyhint="next" />
     <label>Валюта</label>
-    <input type="text" id="ngCurrency" placeholder="BYN" value="BYN" />
+    <input type="text" id="ngCurrency" placeholder="BYN" value="BYN" enterkeyhint="done" />
     <button class="btn-primary" id="ngCreate">Создать группу</button>
     <button class="btn-secondary" id="ngCancel">Отмена</button>
   </div>
@@ -319,15 +323,15 @@
     <div class="sheet-handle"></div>
     <div class="sheet-title">Новый расход</div>
     <label>На что потратили</label>
-    <input type="text" id="exDesc" placeholder="Ужин в кафе" />
+    <input type="text" id="exDesc" placeholder="Ужин в кафе" enterkeyhint="next" />
     <div class="row-inline">
       <div>
         <label>Сумма</label>
-        <input type="number" id="exAmount" placeholder="0" />
+        <input type="number" id="exAmount" placeholder="0" inputmode="decimal" enterkeyhint="done" />
       </div>
       <div>
         <label>Кто платил</label>
-        <select id="exPayer" style="width:100%; border:1.5px solid var(--line); background:var(--paper-raise); border-radius:12px; padding:12px 14px; font-size:15px;"></select>
+        <select id="exPayer" enterkeyhint="done"></select>
       </div>
     </div>
     <label>Делим между</label>
@@ -351,24 +355,64 @@
       if(tp.secondary_bg_color) root.setProperty('--paper-raise', tp.secondary_bg_color);
       if(tp.text_color) root.setProperty('--ink', tp.text_color);
       if(tp.hint_color) root.setProperty('--ink-soft', tp.hint_color);
+      // Явная кнопка закрытия — показываем только внутри Telegram
+      const closeBtn = document.getElementById('closeAppBtn');
+      closeBtn.style.display = 'flex';
+      closeBtn.addEventListener('click', ()=> tg.close());
+      // Нативная кнопка "назад" — работает вместе с нашей стрелкой в шапке
+      tg.BackButton.onClick(()=>{
+        // если открыта модалка — сначала закрываем её, а не весь экран группы
+        if(overlayNewGroup.classList.contains('active')){ overlayNewGroup.classList.remove('active'); return; }
+        if(overlayExpense.classList.contains('active')){ overlayExpense.classList.remove('active'); return; }
+        closeGroup();
+      });
     }catch(e){}
   }
   function haptic(type){ try{ tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred(type||'light'); }catch(e){} }
+  function syncBackButton(){
+    if(!tg) return;
+    const groupOpen = document.getElementById('screen-group').classList.contains('active');
+    if(groupOpen) tg.BackButton.show(); else tg.BackButton.hide();
+  }
 
   // ---------- storage ----------
+  // window.storage существует только в превью-артефактах Claude — на реальном
+  // задеплоенном сайте его нет, поэтому храним через Telegram.CloudStorage
+  // (данные привязаны к пользователю и живут между сессиями), а в обычном
+  // браузере — через localStorage, чтобы можно было тестировать вне Telegram.
   const STORAGE_KEY = 'skinulis-state-v1';
   let state = { groups: [] };
   let currentGroupId = null;
 
+  function cloudGet(key){
+    return new Promise((resolve)=>{
+      if(tg && tg.CloudStorage){
+        tg.CloudStorage.getItem(key, (err, value)=> resolve(err ? null : value));
+      } else {
+        try{ resolve(localStorage.getItem(key)); }catch(e){ resolve(null); }
+      }
+    });
+  }
+  function cloudSet(key, value){
+    return new Promise((resolve)=>{
+      if(tg && tg.CloudStorage){
+        tg.CloudStorage.setItem(key, value, ()=> resolve());
+      } else {
+        try{ localStorage.setItem(key, value); }catch(e){}
+        resolve();
+      }
+    });
+  }
+
   async function loadState(){
     try{
-      const res = await window.storage.get(STORAGE_KEY, false);
-      if(res && res.value){ state = JSON.parse(res.value); }
+      const raw = await cloudGet(STORAGE_KEY);
+      if(raw){ state = JSON.parse(raw); }
     }catch(e){ /* no data yet */ }
     render();
   }
   async function saveState(){
-    try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state), false); }
+    try{ await cloudSet(STORAGE_KEY, JSON.stringify(state)); }
     catch(e){ console.error('storage error', e); }
   }
 
@@ -450,12 +494,14 @@
     document.getElementById('screen-group').classList.add('active');
     switchTab('expenses');
     renderGroupScreen();
+    syncBackButton();
   }
   function closeGroup(){
     document.getElementById('screen-group').classList.remove('active');
     document.getElementById('screen-groups').classList.add('active');
     currentGroupId = null;
     renderGroupsList();
+    syncBackButton();
   }
   function getGroup(){ return state.groups.find(g=>g.id===currentGroupId); }
 
@@ -578,6 +624,24 @@
   });
 
   document.getElementById('backBtn').addEventListener('click', closeGroup);
+
+  // Тап по тёмному фону закрывает модалку и убирает клавиатуру —
+  // раньше единственным способом выйти была маленькая кнопка "Отмена"
+  [overlayNewGroup, overlayExpense].forEach(overlay=>{
+    overlay.addEventListener('click', (e)=>{
+      if(e.target === overlay){
+        overlay.classList.remove('active');
+        if(document.activeElement) document.activeElement.blur();
+      }
+    });
+  });
+  // Тап в любом месте, кроме поля ввода — убирает клавиатуру
+  document.addEventListener('click', (e)=>{
+    const isField = e.target.matches('input, select, textarea, label, .pick-chip');
+    if(!isField && document.activeElement && document.activeElement.matches('input, select, textarea')){
+      document.activeElement.blur();
+    }
+  });
 
   function render(){ renderGroupsList(); }
   loadState();
